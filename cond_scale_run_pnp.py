@@ -43,6 +43,12 @@ def main():
         help="name of this experiment",
         default="default_test"
     )
+    parser.add_argument(
+        "--exp_path_root",
+        type=str,
+        help="experiment path of this experiment",
+        default="default_test"
+    )
     parser.add_argument('--ckpt', type=str, default='models/ldm/stable-diffusion-v1/model.ckpt', help='model checkpoint')
     parser.add_argument('--precision', type=str, default='autocast', help='choices: ["full", "autocast"]')
     parser.add_argument("--check-safety", action='store_true')
@@ -54,7 +60,8 @@ def main():
 
     exp_path_root_config = OmegaConf.load("./configs/pnp/setup.yaml")
     exp_path_root = exp_path_root_config.config.exp_path_root
-
+    if opt.exp_path_root !='default_test':
+        exp_path_root = exp_path_root + opt.exp_path_root
     # read seed from args.json of source experiment
     with open(os.path.join(exp_path_root, exp_config.source_experiment_name, "args.json"), "r") as f:
         args = json.load(f)
@@ -79,12 +86,11 @@ def main():
     opt.seed = seed
 
     translation_folders = [p.replace(' ', '_') for p in exp_config.prompts]
-    #for interpolate_i in range(-5, 15):
-    for interpolate_i in range(-50, 150): # only for cat and house, check if we have severe change.
+    for cond_scale in range(-50, 150, 5):
+    #for interpolate_i in range(1):
         outpaths = [os.path.join(f"{exp_path_root}/{exp_config.source_experiment_name}/translations", f"{exp_config.scale}_{translation_folder}") for translation_folder in translation_folders]
         out_label = f"INJECTION_T_{exp_config.feature_injection_threshold}_STEPS_{ddim_steps}"
-        #out_label += f"_NP-ALPHA_{exp_config.negative_prompt_alpha}_SCHEDULE_{exp_config.negative_prompt_schedule}_NP_{negative_prompt.replace(' ', '_')}_interpolation_" + str(interpolate_i + 5)
-        out_label += f"_NP-ALPHA_{exp_config.negative_prompt_alpha}_SCHEDULE_{exp_config.negative_prompt_schedule}_NP_{negative_prompt.replace(' ', '_')}_interpolation_" + str(interpolate_i + 50)# only for cat and house, check if we have severe change.
+        out_label += f"_NP-ALPHA_{exp_config.negative_prompt_alpha}_SCHEDULE_{exp_config.negative_prompt_schedule}_NP_{negative_prompt.replace(' ', '_')}_interpolation_" + str(cond_scale + 50)
 
         predicted_samples_paths = [os.path.join(outpath, f"predicted_samples_{out_label}") for outpath in outpaths]
         for i in range(len(outpaths)):
@@ -165,16 +171,11 @@ def main():
                     if not isinstance(prompts, list):
                         prompts = list(prompts)
                     c = model.get_learned_conditioning(prompts)
-                    test1 = model.get_learned_conditioning(prompts)
-                    prompts[0] = 'a photo of cute a cat'
-                    test2 = model.get_learned_conditioning(prompts)
-                    import pdb; pdb.set_trace()
                     c_i = model.get_learned_conditioning([opt.prompt_interpolation])
-                    alpha = interpolate_i / 100
-                    #alpha = interpolate_i / 10# only for cat and house, check if we have severe change.
-                    c = alpha * c + (1 - alpha) * c_i
-                    print(alpha)
-                    #c = 0.5 * c + 0.5 * c_i
+                    #alpha = interpolate_i / 10
+                    #c = alpha * c + (1 - alpha) * c_i
+                    print(cond_scale)
+                    c = c_i
                     shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
                     samples_ddim, _ = sampler.sample(S=ddim_steps,
                                                      conditioning=c,
@@ -182,7 +183,8 @@ def main():
                                                      batch_size=len(prompts),
                                                      shape=shape,
                                                      verbose=False,
-                                                     unconditional_guidance_scale=exp_config.scale,
+                                                     #unconditional_guidance_scale=exp_config.scale,
+                                                     unconditional_guidance_scale=cond_scale/10.,
                                                      unconditional_conditioning=uc,
                                                      eta=opt.ddim_eta,
                                                      x_T=start_code,

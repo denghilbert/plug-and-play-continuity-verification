@@ -33,7 +33,7 @@ def main():
 
     exp_path_root_config = OmegaConf.load("./configs/pnp/setup.yaml")
     exp_path_root = exp_path_root_config.config.exp_path_root
-    
+
     # read seed from args.json of source experiment
     with open(os.path.join(exp_path_root, exp_config.source_experiment_name, "args.json"), "r") as f:
         args = json.load(f)
@@ -45,14 +45,14 @@ def main():
     possible_ddim_steps = args["save_feature_timesteps"]
     assert exp_config.num_ddim_sampling_steps in possible_ddim_steps or exp_config.num_ddim_sampling_steps is None, f"possible sampling steps for this experiment are: {possible_ddim_steps}; for {exp_config.num_ddim_sampling_steps} steps, run 'run_features_extraction.py' with save_feature_timesteps = {exp_config.num_ddim_sampling_steps}"
     ddim_steps = exp_config.num_ddim_sampling_steps if exp_config.num_ddim_sampling_steps is not None else possible_ddim_steps[-1]
-    
+
     model_config = OmegaConf.load(f"{opt.model_config}")
     model = load_model_from_config(model_config, f"{opt.ckpt}")
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model = model.to(device)
     sampler = DDIMSampler(model)
-    sampler.make_schedule(ddim_num_steps=ddim_steps, ddim_eta=opt.ddim_eta, verbose=False) 
+    sampler.make_schedule(ddim_num_steps=ddim_steps, ddim_eta=opt.ddim_eta, verbose=False)
 
     seed = torch.initial_seed()
     opt.seed = seed
@@ -94,12 +94,12 @@ def main():
 
         source_experiment_out_layers_path = os.path.join(exp_path_root, exp_config.source_experiment_name, "feature_maps")
         source_experiment_qkv_path = os.path.join(exp_path_root, exp_config.source_experiment_name, "feature_maps")
-        
+
         time_range = np.flip(sampler.ddim_timesteps)
         total_steps = sampler.ddim_timesteps.shape[0]
 
         iterator = tqdm(time_range, desc="loading source experiment features", total=total_steps)
-        
+
         for i, t in enumerate(iterator):
             current_features = {}
             for (output_block_idx, output_block_self_attn_map_injection_threshold) in zip(self_attn_output_block_indices, output_block_self_attn_map_injection_thresholds):
@@ -141,6 +141,7 @@ def main():
                 if not isinstance(prompts, list):
                     prompts = list(prompts)
                 c = model.get_learned_conditioning(prompts)
+                import pdb; pdb.set_trace()
                 shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
                 samples_ddim, _ = sampler.sample(S=ddim_steps,
                                                  conditioning=c,
