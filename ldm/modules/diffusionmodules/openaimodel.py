@@ -542,6 +542,7 @@ class UNetModel(nn.Module):
                 )
             ]
         )
+        #import pdb; pdb.set_trace()
         self._feature_size = model_channels
         input_block_chans = [model_channels]
         ch = model_channels
@@ -607,6 +608,7 @@ class UNetModel(nn.Module):
                 input_block_chans.append(ch)
                 ds *= 2
                 self._feature_size += ch
+            #import pdb;pdb.set_trace()
 
         if num_head_channels == -1:
             dim_head = ch // num_heads
@@ -763,6 +765,7 @@ class UNetModel(nn.Module):
         h = self.middle_block(h, emb, context)
 
         module_i = 0
+        #import pdb; pdb.set_trace()
         for module in self.output_blocks:
             self_attn_q_injected = None
             self_attn_k_injected = None
