@@ -49,6 +49,12 @@ def main():
         default="models/ldm/stable-diffusion-v1/model.ckpt",
         help="path to checkpoint of model",
     )
+    parser.add_argument(
+        "--block",
+        type=str,
+        default="output_block_1",
+        help="the module name of the visualized features",
+    )
 
     opt = parser.parse_args()
     setup_config = OmegaConf.load("./configs/pnp/setup.yaml")
@@ -72,6 +78,7 @@ def main():
     total_steps = sampler.ddim_timesteps.shape[0]
     iterator = tqdm(time_range, desc="visualizing features", total=total_steps)
 
+    exp_config.config.block = opt.block
     print(f"visualizing features PCA experiments: block - {exp_config.config.block}; transform experiments - {exp_config.config.experiments_transform}; fit experiments - {exp_config.config.experiments_fit}")
 
     transform_feature_maps_paths = []
@@ -93,6 +100,8 @@ def main():
     pca_folder_path = os.path.join(exp_path_root, "PCA_features_vis", exp_config.config.experiment_name)
     os.makedirs(pca_folder_path, exist_ok=True)
 
+    if exp_config.config.block == 'output_block_0' or exp_config.config.block == 'output_block_1' or exp_config.config.block == 'output_block_2' or exp_config.config.block == 'input_block_0' or exp_config.config.block == 'input_block_1' or exp_config.config.block == 'input_block_2':
+        feature_types = feature_types[:2]
     for feature_type in feature_types:
         feature_pca_path = os.path.join(pca_folder_path, f"{exp_config.config.block}_{feature_type}")
         feature_pca_paths[feature_type] = feature_pca_path
