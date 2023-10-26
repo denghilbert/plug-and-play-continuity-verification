@@ -80,7 +80,8 @@ def main():
 
     translation_folders = [p.replace(' ', '_') for p in exp_config.prompts]
     #for interpolate_i in range(-5, 15):
-    for interpolate_i in range(-50, 150): # only for cat and house, check if we have severe change.
+    #for interpolate_i in range(-50, 150): # only for cat and house, check if we have severe change.
+    for interpolate_i in range(100, 101): # only for cat and house, check if we have severe change.
         outpaths = [os.path.join(f"{exp_path_root}/{exp_config.source_experiment_name}/translations", f"{exp_config.scale}_{translation_folder}") for translation_folder in translation_folders]
         out_label = f"INJECTION_T_{exp_config.feature_injection_threshold}_STEPS_{ddim_steps}"
         #out_label += f"_NP-ALPHA_{exp_config.negative_prompt_alpha}_SCHEDULE_{exp_config.negative_prompt_schedule}_NP_{negative_prompt.replace(' ', '_')}_interpolation_" + str(interpolate_i + 5)
@@ -168,7 +169,6 @@ def main():
                     test1 = model.get_learned_conditioning(prompts)
                     prompts[0] = 'a photo of cute a cat'
                     test2 = model.get_learned_conditioning(prompts)
-                    import pdb; pdb.set_trace()
                     c_i = model.get_learned_conditioning([opt.prompt_interpolation])
                     alpha = interpolate_i / 100
                     #alpha = interpolate_i / 10# only for cat and house, check if we have severe change.
