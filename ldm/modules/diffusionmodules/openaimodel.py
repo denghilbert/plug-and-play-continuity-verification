@@ -542,7 +542,6 @@ class UNetModel(nn.Module):
                 )
             ]
         )
-        #import pdb; pdb.set_trace()
         self._feature_size = model_channels
         input_block_chans = [model_channels]
         ch = model_channels
@@ -746,6 +745,7 @@ class UNetModel(nn.Module):
         :param y: an [N] Tensor of labels, if class-conditional.
         :return: an [N x C x ...] Tensor of outputs.
         """
+        #import pdb; pdb.set_trace()
         assert (y is not None) == (
             self.num_classes is not None
         ), "must specify y if and only if the model is class-conditional"

@@ -114,6 +114,7 @@ class DDIMSampler(object):
         size = (batch_size, C, H, W)
         print(f'Data shape for DDIM sampling is {size}, eta {eta}')
 
+        #import pdb;pdb.set_trace() # The flow of diffusion denoise
         samples, intermediates = self.ddim_sampling(conditioning, size,
                                                     negative_conditioning=negative_conditioning,
                                                     callback=callback,
@@ -182,6 +183,7 @@ class DDIMSampler(object):
             injected_features_i = injected_features[i]\
                 if (injected_features is not None and len(injected_features) > 0) else None
             negative_prompt_alpha_i = negative_prompt_alpha_schedule[i]
+            #import pdb;pdb.set_trace() # The flow of diffusion denoise
             outs = self.p_sample_ddim(img, cond, ts, index=index, use_original_steps=ddim_use_original_steps,
                                       negative_conditioning=negative_conditioning,
                                       quantize_denoised=quantize_denoised, temperature=temperature,
@@ -213,6 +215,7 @@ class DDIMSampler(object):
                       ):
         b, *_, device = *x.shape, x.device
 
+        #import pdb;pdb.set_trace() # The flow of diffusion denoise
         if negative_conditioning is not None:
             x_in = torch.cat([x] * 2)
             t_in = torch.cat([t] * 2)
@@ -270,7 +273,7 @@ class DDIMSampler(object):
 
     @torch.no_grad()
     def encode_ddim(self, img, num_steps,conditioning, unconditional_conditioning=None ,unconditional_guidance_scale=1.):
-        
+
         print(f"Running DDIM inversion with {num_steps} timesteps")
         T = 999
         c = T // num_steps
@@ -313,7 +316,7 @@ class DDIMSampler(object):
         # direction pointing to x_t
         dir_xt = (1. - a_next).sqrt() * e_t
         x_next = a_next.sqrt() * pred_x0 + dir_xt
-        return x_next, pred_x0   
+        return x_next, pred_x0
 
     @torch.no_grad()
     def stochastic_encode(self, x0, t, use_original_steps=False, noise=None):
