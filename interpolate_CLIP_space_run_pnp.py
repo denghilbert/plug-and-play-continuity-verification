@@ -80,8 +80,8 @@ def main():
 
     translation_folders = [p.replace(' ', '_') for p in exp_config.prompts]
     #for interpolate_i in range(-5, 15):
-    #for interpolate_i in range(-50, 150): # only for cat and house, check if we have severe change.
-    for interpolate_i in range(100, 101): # only for cat and house, check if we have severe change.
+    for interpolate_i in range(-50, 150): # only for cat and house, check if we have severe change.
+    #for interpolate_i in range(100, 101): # only for cat and house, check if we have severe change.
         outpaths = [os.path.join(f"{exp_path_root}/{exp_config.source_experiment_name}/translations", f"{exp_config.scale}_{translation_folder}") for translation_folder in translation_folders]
         out_label = f"INJECTION_T_{exp_config.feature_injection_threshold}_STEPS_{ddim_steps}"
         #out_label += f"_NP-ALPHA_{exp_config.negative_prompt_alpha}_SCHEDULE_{exp_config.negative_prompt_schedule}_NP_{negative_prompt.replace(' ', '_')}_interpolation_" + str(interpolate_i + 5)
