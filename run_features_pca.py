@@ -55,13 +55,20 @@ def main():
         default="output_block_1",
         help="the module name of the visualized features",
     )
+    parser.add_argument(
+        "--experiment",
+        type=str,
+        help="the name of the experiment to vis feature"
+    )
 
     opt = parser.parse_args()
     setup_config = OmegaConf.load("./configs/pnp/setup.yaml")
     exp_path_root = setup_config.config.exp_path_root
     exp_config = OmegaConf.load(f"{opt.config}")
-    transform_experiments = exp_config.config.experiments_transform
-    fit_experiments = exp_config.config.experiments_fit
+    #transform_experiments = exp_config.config.experiments_transform
+    #fit_experiments = exp_config.config.experiments_fit
+    transform_experiments = [opt.experiment]
+    fit_experiments = [opt.experiment]
 
     with open(os.path.join(exp_path_root, transform_experiments[0], "args.json"), "r") as f:
         args = json.load(f)
@@ -79,7 +86,7 @@ def main():
     iterator = tqdm(time_range, desc="visualizing features", total=total_steps)
 
     exp_config.config.block = opt.block
-    print(f"visualizing features PCA experiments: block - {exp_config.config.block}; transform experiments - {exp_config.config.experiments_transform}; fit experiments - {exp_config.config.experiments_fit}")
+    print(f"visualizing features PCA experiments: block - {exp_config.config.block}; transform experiments - {opt.experiment}; fit experiments - {opt.experiment}")
 
     transform_feature_maps_paths = []
     for experiment in transform_experiments:
@@ -97,7 +104,7 @@ def main():
     ]
     feature_pca_paths = {}
 
-    pca_folder_path = os.path.join(exp_path_root, "PCA_features_vis", exp_config.config.experiment_name)
+    pca_folder_path = os.path.join(exp_path_root, "PCA_features_vis", opt.experiment)
     os.makedirs(pca_folder_path, exist_ok=True)
 
     if exp_config.config.block == 'output_block_0' or exp_config.config.block == 'output_block_1' or exp_config.config.block == 'output_block_2' or exp_config.config.block == 'input_block_0' or exp_config.config.block == 'input_block_1' or exp_config.config.block == 'input_block_2':
