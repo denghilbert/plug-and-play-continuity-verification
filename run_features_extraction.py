@@ -137,6 +137,12 @@ def main():
         help="experiment path of this experiment",
         default="default_test"
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=50,
+        help="image width, in pixel space",
+    )
     opt = parser.parse_args()
     setup_config = OmegaConf.load("./configs/pnp/setup.yaml")
     model_config = OmegaConf.load(f"{opt.model_config}")
@@ -154,6 +160,7 @@ def main():
         exp_config.config.scale = 1.0
 
     seed = exp_config.config.seed
+    seed = opt.seed
     seed_everything(seed)
 
     model = load_model_from_config(model_config, f"{opt.ckpt}")

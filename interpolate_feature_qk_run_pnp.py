@@ -79,13 +79,10 @@ def main():
     opt.seed = seed
 
     translation_folders = [p.replace(' ', '_') for p in exp_config.prompts]
-    #for interpolate_i in range(-5, 15):
-    #for interpolate_i in range(-50, 150): # only for cat and house, check if we have severe change.
-    for interpolate_i in range(100, 101): # only for cat and house, check if we have severe change.
+    for interpolate_i in range(1): # only for cat and house, check if we have severe change.
+    #for interpolate_i in range(0, 11): # only for cat and house, check if we have severe change.
         outpaths = [os.path.join(f"{exp_path_root}/{exp_config.source_experiment_name}/translations", f"{exp_config.scale}_{translation_folder}") for translation_folder in translation_folders]
-        out_label = f"INJECTION_T_{exp_config.feature_injection_threshold}_STEPS_{ddim_steps}"
-        #out_label += f"_NP-ALPHA_{exp_config.negative_prompt_alpha}_SCHEDULE_{exp_config.negative_prompt_schedule}_NP_{negative_prompt.replace(' ', '_')}_interpolation_" + str(interpolate_i + 5)
-        out_label += f"_NP-ALPHA_{exp_config.negative_prompt_alpha}_SCHEDULE_{exp_config.negative_prompt_schedule}_NP_{negative_prompt.replace(' ', '_')}_interpolation_" + str(interpolate_i + 50)# only for cat and house, check if we have severe change.
+        out_label = f"interpolation"
 
         predicted_samples_paths = [os.path.join(outpath, f"predicted_samples_{out_label}") for outpath in outpaths]
         for i in range(len(outpaths)):
@@ -114,7 +111,7 @@ def main():
             self_attn_output_block_indices = [4,5,6,7,8,9,10,11]
             out_layers_output_block_indices = [4]
             output_block_self_attn_map_injection_thresholds = [ddim_steps // 2] * len(self_attn_output_block_indices)
-            feature_injection_thresholds = [exp_config.feature_injection_threshold]
+            feature_injection_thresholds = [exp_config.feature_injection_threshold-1]
             target_features = []
 
             source_experiment_out_layers_path = os.path.join(exp_path_root, exp_config.source_experiment_name, "feature_maps")
@@ -187,14 +184,15 @@ def main():
         precision_scope = autocast if opt.precision=="autocast" else nullcontext
         injected_features = load_target_features()
         injected_features_interpolate = load_target_features_other_feature('./experiments/cat_grass/feature_maps', './experiments/cat_grass/feature_maps')
-        injected_features = injected_features_interpolate
-        count = 0
+        alpha = float(interpolate_i) / 10.
+        interpolated_feature = []
         for f_qk, f_qk_interpolate in zip(injected_features, injected_features_interpolate):
-            print(count)
-            count = count + 1
+            tmp_dict = {}
             for key, key_in in zip(f_qk, f_qk_interpolate):
-                print(key)
-        import pdb;pdb.set_trace()
+                tmp_dict[key] = alpha * f_qk[key] + (1 - alpha) * f_qk_interpolate[key_in]
+            interpolated_feature.append(tmp_dict)
+        #injected_features = interpolated_feature
+        #import pdb;pdb.set_trace()
         unconditional_prompt = ""
         with torch.no_grad():
             with precision_scope("cuda"):
@@ -207,14 +205,14 @@ def main():
                     if not isinstance(prompts, list):
                         prompts = list(prompts)
                     c = model.get_learned_conditioning(prompts)
-                    test1 = model.get_learned_conditioning(prompts)
-                    prompts[0] = 'a photo of cute a cat'
-                    test2 = model.get_learned_conditioning(prompts)
-                    c_i = model.get_learned_conditioning([opt.prompt_interpolation])
-                    alpha = interpolate_i / 100
-                    #alpha = interpolate_i / 10# only for cat and house, check if we have severe change.
-                    c = alpha * c + (1 - alpha) * c_i
-                    print(alpha)
+                    #test1 = model.get_learned_conditioning(prompts)
+                    #prompts[0] = 'a photo of cute a cat'
+                    #test2 = model.get_learned_conditioning(prompts)
+                    #c_i = model.get_learned_conditioning([opt.prompt_interpolation])
+                    #alpha = interpolate_i / 100
+                    ##alpha = interpolate_i / 10# only for cat and house, check if we have severe change.
+                    #c = alpha * c + (1 - alpha) * c_i
+                    #print(alpha)
                     #c = 0.5 * c + 0.5 * c_i
                     shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
                     samples_ddim, _ = sampler.sample(S=ddim_steps,
