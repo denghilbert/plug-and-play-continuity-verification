@@ -16,6 +16,7 @@ from ldm.models.diffusion.ddim import DDIMSampler
 from run_features_extraction import load_model_from_config
 
 from PIL import Image
+import clip
 
 def main():
     parser = argparse.ArgumentParser()
@@ -184,7 +185,7 @@ def main():
 
         precision_scope = autocast if opt.precision=="autocast" else nullcontext
         injected_features = load_target_features()
-        injected_features_interpolate = load_target_features_other_feature('./experiments/cat_grass/feature_maps', './experiments/cat_grass/feature_maps')
+        injected_features_interpolate = load_target_features_other_feature('./experiments/corgi_ddpm_0/feature_maps/', './experiments/corgi_ddpm_0/feature_maps/')
         alpha = float(interpolate_i) / 10.
         interpolated_feature = []
         for f_qk, f_qk_interpolate in zip(injected_features, injected_features_interpolate):
@@ -193,14 +194,7 @@ def main():
                 tmp_dict[key] = alpha * f_qk[key] + (1 - alpha) * f_qk_interpolate[key_in]
             interpolated_feature.append(tmp_dict)
         #injected_features = interpolated_feature
-        #import pdb;pdb.set_trace()
 
-        # encode different cats using CLIP embedding
-        # ['RN50', 'RN101', 'RN50x4', 'RN50x16', 'RN50x64', 'ViT-B/32', 'ViT-B/16', 'ViT-L/14', 'ViT-L/14@336px']
-        model, preprocess = clip.load("ViT-L/14").cuda()
-        image = preprocess(Image.open("./experiments/dog_50_0/samples/0.png")).unsqueeze(0).cuda()
-        image_features = model.encode_image(image)
-        import pdb;pdb.set_trace()
         unconditional_prompt = ""
         with torch.no_grad():
             with precision_scope("cuda"):
@@ -212,16 +206,14 @@ def main():
                         nc = model.get_learned_conditioning(batch_size * [negative_prompt])
                     if not isinstance(prompts, list):
                         prompts = list(prompts)
-                    c = model.get_learned_conditioning(prompts)
-                    #test1 = model.get_learned_conditioning(prompts)
-                    #prompts[0] = 'a photo of cute a cat'
-                    #test2 = model.get_learned_conditioning(prompts)
-                    #c_i = model.get_learned_conditioning([opt.prompt_interpolation])
-                    #alpha = interpolate_i / 100
-                    ##alpha = interpolate_i / 10# only for cat and house, check if we have severe change.
-                    #c = alpha * c + (1 - alpha) * c_i
-                    #print(alpha)
-                    #c = 0.5 * c + 0.5 * c_i
+                    uc = uc[:, :1, :]
+                    nc = nc[:, :1, :]
+                    c = model.get_learned_conditioning(prompts)[:, :77, :]
+                    clip_model, preprocess = clip.load("ViT-L/14", "cuda")
+                    image = preprocess(Image.open("./experiments/corgi_ddim_0/samples/0.png")).unsqueeze(0).cuda()
+                    image_features = clip_model.encode_image(image)
+                    #import pdb;pdb.set_trace()
+                    c = image_features[:, None, :]#.repeat(1, 77, 1)
                     shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
                     samples_ddim, _ = sampler.sample(S=ddim_steps,
                                                      conditioning=c,
