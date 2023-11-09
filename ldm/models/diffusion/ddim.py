@@ -172,6 +172,8 @@ class DDIMSampler(object):
         negative_prompt_alpha_schedule = self.make_negative_prompt_schedule(negative_prompt_schedule, negative_prompt_alpha, total_steps)
 
         for i, step in enumerate(iterator):
+            #if step < 500:
+            #    cond = unconditional_conditioning
             index = total_steps - i - 1
             ts = torch.full((b,), step, device=device, dtype=torch.long)
 

@@ -783,6 +783,9 @@ class UNetModel(nn.Module):
             if injected_features is not None and out_layers_feature_key in injected_features:
                 out_layers_injected = injected_features[out_layers_feature_key]
 
+            # upsampling with short connect
+            #if module_i == 5 or module_i == 6:
+            #    import pdb;pdb.set_trace()
             h = th.cat([h, hs.pop()], dim=1)
             h = module(h,
                        emb,

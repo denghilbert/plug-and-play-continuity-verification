@@ -171,7 +171,8 @@ def main():
     sampler = DDIMSampler(model)
     save_feature_timesteps = exp_config.config.ddim_steps if exp_config.config.init_img == '' else exp_config.config.save_feature_timesteps
 
-    for index in range(5):
+    #for index in range(5):
+    for index in range(1):
         outpath = f"{exp_path_root}/{exp_config.config.experiment_name}_{index}"
 
         callback_timesteps_to_save = [save_feature_timesteps]
