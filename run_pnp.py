@@ -40,6 +40,7 @@ def main():
         help="name of this experiment",
         default="default_test"
     )
+    parser.add_argument("--use_3layer_replace", action='store_true')
     opt = parser.parse_args()
     exp_config = OmegaConf.load(opt.config)
     if opt.experiment_name != "default_test":
@@ -76,7 +77,7 @@ def main():
     for qk_threshold in range(-1, 50, 5):
         outpaths = [os.path.join(f"{exp_path_root}/{exp_config.source_experiment_name}/translations", f"{exp_config.scale}_{translation_folder}") for translation_folder in translation_folders]
         step_qk = 20 * (qk_threshold + 1)
-        out_label = f"house_qk_only7_{step_qk}"
+        out_label = f"house_resfeat_369_{step_qk}"
 
         predicted_samples_paths = [os.path.join(outpath, f"predicted_samples_{out_label}") for outpath in outpaths]
         for i in range(len(outpaths)):
@@ -102,10 +103,10 @@ def main():
             save_sampled_img(pred_x0, i, predicted_samples_paths)
 
         def load_target_features(qk_threshold):
-            self_attn_output_block_indices = [7]
-            out_layers_output_block_indices = [3,4]
-            output_block_self_attn_map_injection_thresholds = [qk_threshold] * len(self_attn_output_block_indices)
-            feature_injection_thresholds = [-1] * len(out_layers_output_block_indices)
+            self_attn_output_block_indices = [3,4,5,6,7,8,9,10]
+            out_layers_output_block_indices = [3,4,5,6,7,8,9,10]
+            output_block_self_attn_map_injection_thresholds = [-1] * len(self_attn_output_block_indices)
+            feature_injection_thresholds = [qk_threshold] * len(out_layers_output_block_indices)
             target_features = []
 
             source_experiment_out_layers_path = os.path.join(exp_path_root, exp_config.source_experiment_name, "feature_maps")
@@ -174,6 +175,13 @@ def main():
                     #        print(type(block))
 
                     # try to upsample from low resolution feature
+                    #(Pdb) injected_features[0]['output_block_3_out_layers'].shape
+                    #torch.Size([2, 1280, 16, 16])
+                    #(Pdb) injected_features[0]['output_block_6_out_layers'].shape
+                    #torch.Size([2, 640, 32, 32])
+                    #(Pdb) injected_features[0]['output_block_9_out_layers'].shape
+                    #torch.Size([2, 320, 64, 64])
+
                     for i in range(0):
                         tmp = injected_features[i]['output_block_3_out_layers'] # torch.Size([2, 1280, 16, 16])
                         injected_features[i]['output_block_4_out_layers'] = tmp # torch.Size([2, 1280, 16, 16])
@@ -222,8 +230,18 @@ def main():
                     #    print(injected_features[0][f'output_block_{i}_out_layers'].shape)
                     #print("layer we will use:")
                     #print(injected_features[0]['output_block_11_out_layers'].shape) # torch.Size([2, 320, 64, 64])
-                    #import pdb;pdb.set_trace()
+
                     shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
+
+
+                    injected_features_3layer = []
+                    if opt.use_3layer_replace:
+                        for i in range(qk_threshold + 1):
+                            tmp = {}
+                            tmp['output_block_3_out_layers'] = injected_features[i]['output_block_3_out_layers']
+                            injected_features_3layer.append(tmp)
+                        for i in range(len(injected_features)):
+                            injected_features[i] = {}
                     samples_ddim, _ = sampler.sample(S=ddim_steps,
                                                      conditioning=c,
                                                      negative_conditioning=nc,
@@ -236,6 +254,7 @@ def main():
                                                      x_T=start_code,
                                                      img_callback=ddim_sampler_callback,
                                                      injected_features=injected_features,
+                                                     injected_features_3layer=injected_features_3layer,
                                                      negative_prompt_alpha=exp_config.negative_prompt_alpha,
                                                      negative_prompt_schedule=exp_config.negative_prompt_schedule,
                                                      )

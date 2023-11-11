@@ -894,7 +894,8 @@ class LatentDiffusion(DDPM):
                     t,
                     cond,
                     return_ids=False,
-                    injected_features=None):
+                    injected_features=None,
+                    injected_features_3layer=None):
         #import pdb;pdb.set_trace() # The flow of diffusion denoise
         if isinstance(cond, dict):
             # hybrid case, cond is exptected to be a dict
@@ -998,7 +999,8 @@ class LatentDiffusion(DDPM):
             x_recon = self.model(x_noisy,
                                  t,
                                  **cond,
-                                 injected_features=injected_features
+                                 injected_features=injected_features,
+                                 injected_features_3layer=injected_features_3layer
                                  )
 
         if isinstance(x_recon, tuple) and not return_ids:
@@ -1420,6 +1422,7 @@ class DiffusionWrapper(pl.LightningModule):
                 c_concat: list = None,
                 c_crossattn: list = None,
                 injected_features=None,
+                injected_features_3layer=None,
                 ):
         if self.conditioning_key is None:
             out = self.diffusion_model(x, t)
@@ -1433,7 +1436,9 @@ class DiffusionWrapper(pl.LightningModule):
             out = self.diffusion_model(x,
                                        t,
                                        context=cc,
-                                       injected_features=injected_features)
+                                       injected_features=injected_features,
+                                       injected_features_3layer=injected_features_3layer
+                                       )
         elif self.conditioning_key == 'hybrid':
             xc = torch.cat([x] + c_concat, dim=1)
             cc = torch.cat(c_crossattn, 1)

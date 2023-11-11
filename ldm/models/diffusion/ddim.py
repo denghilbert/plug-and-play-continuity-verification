@@ -92,6 +92,7 @@ class DDIMSampler(object):
                unconditional_guidance_scale=1.,
                unconditional_conditioning=None,
                injected_features=None,
+               injected_features_3layer=None,
                strength=1.,
                callback_ddim_timesteps=None,
                negative_prompt_alpha=1.0,
@@ -131,6 +132,7 @@ class DDIMSampler(object):
                                                     unconditional_guidance_scale=unconditional_guidance_scale,
                                                     unconditional_conditioning=unconditional_conditioning,
                                                     injected_features=injected_features,
+                                                    injected_features_3layer=injected_features_3layer,
                                                     callback_ddim_timesteps=callback_ddim_timesteps,
                                                     negative_prompt_alpha=negative_prompt_alpha,
                                                     negative_prompt_schedule=negative_prompt_schedule,
@@ -144,7 +146,7 @@ class DDIMSampler(object):
                       mask=None, x0=None, img_callback=None, log_every_t=100,
                       temperature=1., noise_dropout=0., score_corrector=None, corrector_kwargs=None,
                       unconditional_guidance_scale=1., unconditional_conditioning=None,
-                      injected_features=None, callback_ddim_timesteps=None,
+                      injected_features=None,injected_features_3layer=None, callback_ddim_timesteps=None,
                       negative_prompt_alpha=1.0, negative_prompt_schedule='constant'):
         device = self.model.betas.device
         b = shape[0]
@@ -184,6 +186,8 @@ class DDIMSampler(object):
 
             injected_features_i = injected_features[i]\
                 if (injected_features is not None and len(injected_features) > 0) else None
+            injected_features_3layer_i = injected_features_3layer[i]\
+                if (injected_features_3layer is not None and len(injected_features_3layer) > 0) else None
             negative_prompt_alpha_i = negative_prompt_alpha_schedule[i]
             #import pdb;pdb.set_trace() # The flow of diffusion denoise
             outs = self.p_sample_ddim(img, cond, ts, index=index, use_original_steps=ddim_use_original_steps,
@@ -194,6 +198,7 @@ class DDIMSampler(object):
                                       unconditional_guidance_scale=unconditional_guidance_scale,
                                       unconditional_conditioning=unconditional_conditioning,
                                       injected_features=injected_features_i,
+                                      injected_features_3layer=injected_features_3layer_i,
                                       negative_prompt_alpha=negative_prompt_alpha_i
                                       )
 
@@ -213,7 +218,7 @@ class DDIMSampler(object):
                       repeat_noise=False, use_original_steps=False, quantize_denoised=False,
                       temperature=1., noise_dropout=0., score_corrector=None, corrector_kwargs=None,
                       unconditional_guidance_scale=1., unconditional_conditioning=None,
-                      injected_features=None, negative_prompt_alpha=1.0
+                      injected_features=None, injected_features_3layer=None, negative_prompt_alpha=1.0
                       ):
         b, *_, device = *x.shape, x.device
 
@@ -228,14 +233,16 @@ class DDIMSampler(object):
             e_t_negative, e_t_uncond = self.model.apply_model(x_in,
                                                      t_in,
                                                      c_in,
-                                                     injected_features=injected_features
+                                                     injected_features=injected_features,
+                                                     injected_features_3layer=injected_features_3layer
                                                      ).chunk(2)
 
             c_in = torch.cat([uc, c])
             e_t_uncond, e_t = self.model.apply_model(x_in,
                                                      t_in,
                                                      c_in,
-                                                     injected_features=injected_features
+                                                     injected_features=injected_features,
+                                                     injected_features_3layer=injected_features_3layer
                                                      ).chunk(2)
 
             e_t_tilde = negative_prompt_alpha * e_t_uncond + (1 - negative_prompt_alpha) * e_t_negative

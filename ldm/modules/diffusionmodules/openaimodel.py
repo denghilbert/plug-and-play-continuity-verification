@@ -736,6 +736,7 @@ class UNetModel(nn.Module):
                 context=None,
                 y=None,
                 injected_features=None,
+                injected_features_3layer=None,
                 **kwargs):
         """
         Apply the model to an input batch.
@@ -745,7 +746,6 @@ class UNetModel(nn.Module):
         :param y: an [N] Tensor of labels, if class-conditional.
         :return: an [N x C x ...] Tensor of outputs.
         """
-        #import pdb; pdb.set_trace()
         assert (y is not None) == (
             self.num_classes is not None
         ), "must specify y if and only if the model is class-conditional"
@@ -785,7 +785,11 @@ class UNetModel(nn.Module):
 
             # upsampling with short connect
             #if module_i == 5 or module_i == 6:
-            #    import pdb;pdb.set_trace()
+            #print(module_i)
+            #print("input feature shape")
+            #print(h.shape)
+            #print(injected_features_3layer['output_block_3_out_layers'].shape)
+            #import pdb;pdb.set_trace()
             h = th.cat([h, hs.pop()], dim=1)
             h = module(h,
                        emb,
