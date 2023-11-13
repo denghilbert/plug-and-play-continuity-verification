@@ -41,6 +41,7 @@ def main():
         default="default_test"
     )
     parser.add_argument("--use_3layer_replace", action='store_true')
+    parser.add_argument("--replace_with_timestep1", action='store_true')
     opt = parser.parse_args()
     exp_config = OmegaConf.load(opt.config)
     if opt.experiment_name != "default_test":
@@ -77,7 +78,7 @@ def main():
     for qk_threshold in range(-1, 50, 5):
         outpaths = [os.path.join(f"{exp_path_root}/{exp_config.source_experiment_name}/translations", f"{exp_config.scale}_{translation_folder}") for translation_folder in translation_folders]
         step_qk = 20 * (qk_threshold + 1)
-        out_label = f"house_resfeat_369_{step_qk}"
+        out_label = f"corgi2winter_resfeat369_replace_with_timestep0_{step_qk}"
 
         predicted_samples_paths = [os.path.join(outpath, f"predicted_samples_{out_label}") for outpath in outpaths]
         for i in range(len(outpaths)):
@@ -104,7 +105,7 @@ def main():
 
         def load_target_features(qk_threshold):
             self_attn_output_block_indices = [3,4,5,6,7,8,9,10]
-            out_layers_output_block_indices = [3,4,5,6,7,8,9,10]
+            out_layers_output_block_indices = [3,6,9]
             output_block_self_attn_map_injection_thresholds = [-1] * len(self_attn_output_block_indices)
             feature_injection_thresholds = [qk_threshold] * len(out_layers_output_block_indices)
             target_features = []
@@ -242,6 +243,10 @@ def main():
                             injected_features_3layer.append(tmp)
                         for i in range(len(injected_features)):
                             injected_features[i] = {}
+
+                    if opt.replace_with_timestep1:
+                        injected_features = [injected_features[qk_threshold] if i <= qk_threshold else {} for i in range(50)]
+
                     samples_ddim, _ = sampler.sample(S=ddim_steps,
                                                      conditioning=c,
                                                      negative_conditioning=nc,
