@@ -89,7 +89,7 @@ class LinearAttention(nn.Module):
         b, c, h, w = x.shape
         qkv = self.to_qkv(x)
         q, k, v = rearrange(qkv, 'b (qkv heads c) h w -> qkv b heads c (h w)', heads = self.heads, qkv=3)
-        k = k.softmax(dim=-1)  
+        k = k.softmax(dim=-1)
         context = torch.einsum('bhdn,bhen->bhde', k, v)
         out = torch.einsum('bhde,bhdn->bhen', context, q)
         out = rearrange(out, 'b heads c (h w) -> b (heads c) h w', heads=self.heads, h=h, w=w)
@@ -177,7 +177,12 @@ class CrossAttention(nn.Module):
                 context=None,
                 mask=None,
                 q_injected=None,
-                k_injected=None):
+                k_injected=None,
+                cross_attn_v_input=None,
+                cross_attn_k_input=None,
+                cross_attn_v_output=None,
+                cross_attn_k_output=None,
+                module_name=''):
         self.attn = None
         h = self.heads
         b = x.shape[0] // 2
@@ -202,6 +207,25 @@ class CrossAttention(nn.Module):
         self.q = q
         self.k = k
         self.v = v
+        if cross_attn_k_input != None:
+            self.k = cross_attn_k_input
+            self.v = cross_attn_v_input
+            #print(self.q.shape)
+            #print(self.k.shape)
+            #print(self.v.shape)
+            #print(cross_attn_v_input.shape)
+            #print(cross_attn_k_input.shape)
+            #import pdb;pdb.set_trace()
+        if cross_attn_k_output != None:
+            self.k = cross_attn_k_output
+            self.v = cross_attn_v_output
+            #print(self.q.shape)
+            #print(self.k.shape)
+            #print(self.v.shape)
+            #print(cross_attn_v_output.shape)
+            #print(cross_attn_k_output.shape)
+            #import pdb;pdb.set_trace()
+
 
         sim = einsum('b i d, b j d -> b i j', q, k) * self.scale
 
@@ -237,22 +261,44 @@ class BasicTransformerBlock(nn.Module):
                 x,
                 context=None,
                 self_attn_q_injected=None,
-                self_attn_k_injected=None
-                ):
+                self_attn_k_injected=None,
+                cross_attn_v_input=None,
+                cross_attn_k_input=None,
+                cross_attn_v_output=None,
+                cross_attn_k_output=None,
+                module_name=''):
         return checkpoint(self._forward, (x,
                                           context,
                                           self_attn_q_injected,
-                                          self_attn_k_injected), self.parameters(), self.checkpoint)
+                                          self_attn_k_injected,
+                                          cross_attn_v_input,
+                                          cross_attn_k_input,
+                                          cross_attn_v_output,
+                                          cross_attn_k_output,
+                                          module_name
+                                          ), self.parameters(), self.checkpoint)
 
     def _forward(self,
                  x,
                  context=None,
                  self_attn_q_injected=None,
-                 self_attn_k_injected=None):
+                 self_attn_k_injected=None,
+                 cross_attn_v_input=None,
+                 cross_attn_k_input=None,
+                 cross_attn_v_output=None,
+                 cross_attn_k_output=None,
+                 module_name=''):
         x = self.attn1(self.norm1(x),
                        q_injected=self_attn_q_injected,
                        k_injected=self_attn_k_injected) + x
-        x = self.attn2(self.norm2(x), context=context) + x
+        x = self.attn2(self.norm2(x),
+                       context=context,
+                       cross_attn_v_input=cross_attn_v_input,
+                       cross_attn_k_input=cross_attn_k_input,
+                       cross_attn_v_output=cross_attn_v_output,
+                       cross_attn_k_output=cross_attn_k_output,
+                       module_name=module_name
+                       ) + x
         x = self.ff(self.norm3(x)) + x
         return x
 
@@ -293,7 +339,12 @@ class SpatialTransformer(nn.Module):
                 x,
                 context=None,
                 self_attn_q_injected=None,
-                self_attn_k_injected=None):
+                self_attn_k_injected=None,
+                cross_attn_v_input=None,
+                cross_attn_k_input=None,
+                cross_attn_v_output=None,
+                cross_attn_k_output=None,
+                module_name=''):
         # note: if no context is given, cross-attention defaults to self-attention
         b, c, h, w = x.shape
         x_in = x
@@ -304,7 +355,12 @@ class SpatialTransformer(nn.Module):
             x = block(x,
                       context=context,
                       self_attn_q_injected=self_attn_q_injected,
-                      self_attn_k_injected=self_attn_k_injected)
+                      self_attn_k_injected=self_attn_k_injected,
+                      cross_attn_v_input=cross_attn_v_input,
+                      cross_attn_k_input=cross_attn_k_input,
+                      cross_attn_v_output=cross_attn_v_output,
+                      cross_attn_k_output=cross_attn_k_output,
+                      module_name=module_name)
         x = rearrange(x, 'b (h w) c -> b c h w', h=h, w=w)
         x = self.proj_out(x)
         return x + x_in

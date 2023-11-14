@@ -83,7 +83,12 @@ class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
                 context=None,
                 self_attn_q_injected=None,
                 self_attn_k_injected=None,
-                out_layers_injected=None):
+                cross_attn_v_input=None,
+                cross_attn_k_input=None,
+                cross_attn_v_output=None,
+                cross_attn_k_output=None,
+                out_layers_injected=None,
+                module_name=''):
         for layer in self:
             if isinstance(layer, ResBlock):
                 x = layer(x, emb, out_layers_injected=out_layers_injected)
@@ -93,7 +98,12 @@ class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
                 x = layer(x,
                           context,
                           self_attn_q_injected,
-                          self_attn_k_injected)
+                          self_attn_k_injected,
+                          cross_attn_v_input,
+                          cross_attn_k_input,
+                          cross_attn_v_output,
+                          cross_attn_k_output,
+                          module_name)
             else:
                 x = layer(x)
         self.stored_output = x
@@ -758,14 +768,36 @@ class UNetModel(nn.Module):
             emb = emb + self.label_emb(y)
 
         h = x.type(self.dtype)
+
+        module_i = 0
         for module in self.input_blocks:
-            h = module(h, emb, context)
+            # input layer kv key
+            cross_attn_k_input = None
+            cross_attn_v_input = None
+            cross_k_input_key = f'input_block_{module_i}_cross_attn_k'
+            cross_v_input_key = f'input_block_{module_i}_cross_attn_v'
+
+            # k and v from cross-attn of input (encoder)
+            if injected_features is not None and cross_k_input_key in injected_features:
+                cross_attn_k_input = injected_features[cross_k_input_key]
+            if injected_features is not None and cross_v_input_key in injected_features:
+                cross_attn_v_input = injected_features[cross_v_input_key]
+
+            #print('input_block' + str(module_i))
+            #import pdb;pdb.set_trace()
+            h = module(h,
+                       emb,
+                       context,
+                       cross_attn_v_input=cross_attn_v_input,
+                       cross_attn_k_input=cross_attn_k_input,
+                       module_name='input_block' + str(module_i),
+                       )
             hs.append(h)
+            module_i += 1
 
         h = self.middle_block(h, emb, context)
 
         module_i = 0
-        #import pdb; pdb.set_trace()
         for module in self.output_blocks:
             self_attn_q_injected = None
             self_attn_k_injected = None
@@ -774,29 +806,41 @@ class UNetModel(nn.Module):
             k_feature_key = f'output_block_{module_i}_self_attn_k'
             out_layers_feature_key = f'output_block_{module_i}_out_layers'
 
+            cross_attn_k_output = None
+            cross_attn_v_output = None
+            cross_k_output_key = f'output_block_{module_i}_cross_attn_k'
+            cross_v_output_key = f'output_block_{module_i}_cross_attn_v'
+
+            # q and k from self-attn
             if injected_features is not None and q_feature_key in injected_features:
                 self_attn_q_injected = injected_features[q_feature_key]
 
             if injected_features is not None and k_feature_key in injected_features:
                 self_attn_k_injected = injected_features[k_feature_key]
 
+            # Resblock feature output
             if injected_features is not None and out_layers_feature_key in injected_features:
                 out_layers_injected = injected_features[out_layers_feature_key]
 
-            # upsampling with short connect
-            #if module_i == 5 or module_i == 6:
-            #print(module_i)
-            #print("input feature shape")
-            #print(h.shape)
-            #print(injected_features_3layer['output_block_3_out_layers'].shape)
-            #import pdb;pdb.set_trace()
+            # k and v from cross-attn of output (decoder)
+            if injected_features is not None and cross_k_output_key in injected_features:
+                cross_attn_k_output = injected_features[cross_k_output_key]
+            if injected_features is not None and cross_v_output_key in injected_features:
+                cross_attn_v_output = injected_features[cross_v_output_key]
+
+
             h = th.cat([h, hs.pop()], dim=1)
+            #print('output_block' + str(module_i))
+            #import pdb;pdb.set_trace()
             h = module(h,
                        emb,
                        context,
                        self_attn_q_injected=self_attn_q_injected,
                        self_attn_k_injected=self_attn_k_injected,
-                       out_layers_injected=out_layers_injected)
+                       cross_attn_v_output=cross_attn_v_output,
+                       cross_attn_k_output=cross_attn_k_output,
+                       out_layers_injected=out_layers_injected,
+                       module_name='output_block' + str(module_i))
             module_i += 1
 
         h = h.type(x.dtype)
