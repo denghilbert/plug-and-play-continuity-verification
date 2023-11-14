@@ -224,13 +224,16 @@ def main():
                 if len(block) > 1 and "SpatialTransformer" in str(type(block[1])):
                     save_feature_map(block[1].transformer_blocks[0].attn1.k, f"{feature_type}_{block_idx}_self_attn_k_time_{i}")
                     save_feature_map(block[1].transformer_blocks[0].attn1.q, f"{feature_type}_{block_idx}_self_attn_q_time_{i}")
+
                     save_feature_map(block[1].transformer_blocks[0].attn2.k, f"{feature_type}_{block_idx}_cross_attn_k_time_{i}")
                     save_feature_map(block[1].transformer_blocks[0].attn2.q, f"{feature_type}_{block_idx}_cross_attn_q_time_{i}")
+                    save_feature_map(block[1].transformer_blocks[0].attn2.v, f"{feature_type}_{block_idx}_cross_attn_v_time_{i}")
                 block_idx += 1
 
         def save_feature_maps_callback(i):
             if opt.save_all_features:
                 save_feature_maps(unet_model.input_blocks, i, "input_block")
+                #save_feature_maps(unet_model.middle_block, i, "middle_block")
             save_feature_maps(unet_model.output_blocks , i, "output_block")
 
         def save_feature_map(feature_map, filename):
