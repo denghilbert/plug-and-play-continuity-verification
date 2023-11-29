@@ -5,7 +5,7 @@ from omegaconf import OmegaConf
 from PIL import Image
 from tqdm import trange, tqdm
 from einops import rearrange
-from pytorch_lightning import seed_everything
+#from pytorch_lightning import seed_everything
 from torch import autocast
 from contextlib import nullcontext
 import json
@@ -14,6 +14,26 @@ from pnp_utils import check_safety
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
 from run_features_extraction import load_model_from_config
+
+import random
+def seed_everything(seed=42):
+    # Seed Python's random module
+    random.seed(seed)
+
+    # Seed NumPy's random number generator
+    np.random.seed(seed)
+
+    # Seed PyTorch's random number generator
+    torch.manual_seed(seed)
+
+    # If CUDA is available, seed its random number generator
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)  # For multi-GPU.
+
+        # Additional configurations for reproducibility
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
 
 def main():
@@ -40,7 +60,7 @@ def main():
         help="name of this experiment",
         default="default_test"
     )
-    parser.add_argument("--seed", type=int)
+    parser.add_argument("--seed", type=int, default=50)
     parser.add_argument("--use_3layer_replace", action='store_true')
     parser.add_argument("--replace_with_timestep1", action='store_true')
     parser.add_argument("--duplicate_cross_attn_cond", action='store_true')
@@ -62,6 +82,7 @@ def main():
     negative_prompt = source_prompt if exp_config.negative_prompt is None else exp_config.negative_prompt
 
     seed_everything(seed)
+    #seed = torch.initial_seed()
     possible_ddim_steps = args["save_feature_timesteps"]
     assert exp_config.num_ddim_sampling_steps in possible_ddim_steps or exp_config.num_ddim_sampling_steps is None, f"possible sampling steps for this experiment are: {possible_ddim_steps}; for {exp_config.num_ddim_sampling_steps} steps, run 'run_features_extraction.py' with save_feature_timesteps = {exp_config.num_ddim_sampling_steps}"
     ddim_steps = exp_config.num_ddim_sampling_steps if exp_config.num_ddim_sampling_steps is not None else possible_ddim_steps[-1]
@@ -74,7 +95,6 @@ def main():
     sampler = DDIMSampler(model)
     sampler.make_schedule(ddim_num_steps=ddim_steps, ddim_eta=opt.ddim_eta, verbose=False)
 
-    seed = torch.initial_seed()
 
     translation_folders = [p.replace(' ', '_') for p in exp_config.prompts]
     uncond_list = []
