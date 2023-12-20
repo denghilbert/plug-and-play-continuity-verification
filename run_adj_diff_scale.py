@@ -64,6 +64,8 @@ def main():
     parser.add_argument("--use_3layer_replace", action='store_true')
     parser.add_argument("--replace_with_timestep1", action='store_true')
     parser.add_argument("--duplicate_cross_attn_cond", action='store_true')
+    parser.add_argument("--classifier_free_scale", nargs="+", type=int, default=[5, 150])
+    parser.add_argument("--condition_timestep", nargs="+", type=int, default=[-1, 49])
     opt = parser.parse_args()
     exp_config = OmegaConf.load(opt.config)
     if opt.experiment_name != "default_test":
@@ -103,10 +105,10 @@ def main():
     #    uncond_list.append(i / 10)
     #for i in range(15, 150, 5):
     #    uncond_list.append(i / 10)
-    for i in range(5, 150, 5):
+    for i in range(opt.classifier_free_scale[0], opt.classifier_free_scale[1], 5):
         if i != 10:
             uncond_list.append(i / 10)
-    for i in range(-1, 50, 10):
+    for i in range(opt.condition_timestep[0], opt.condition_timestep[1], 10):
         timesteps_list.append(i)
     for uncond_scale in uncond_list:
         exp_config.scale = uncond_scale

@@ -143,6 +143,12 @@ def main():
         default=50,
         help="image width, in pixel space",
     )
+    parser.add_argument(
+        "--real_img_path",
+        type=str,
+        help="real image for inversion",
+        default="null"
+    )
     opt = parser.parse_args()
     setup_config = OmegaConf.load("./configs/pnp/setup.yaml")
     model_config = OmegaConf.load(f"{opt.model_config}")
@@ -154,6 +160,8 @@ def main():
     if opt.exp_path_root !='default_test':
         exp_path_root = exp_path_root + opt.exp_path_root
 
+    if opt.real_img_path != 'null':
+        exp_config.config.init_img = opt.real_img_path
     if exp_config.config.init_img != '':
         exp_config.config.seed = -1
         exp_config.config.prompt = ""
@@ -173,7 +181,8 @@ def main():
 
     #for index in range(5):
     for index in range(1):
-        outpath = f"{exp_path_root}/{exp_config.config.experiment_name}_{index}"
+        #outpath = f"{exp_path_root}/{exp_config.config.experiment_name}_{index}"
+        outpath = f"{exp_path_root}/{exp_config.config.experiment_name}"
 
         callback_timesteps_to_save = [save_feature_timesteps]
         if os.path.exists(outpath):
@@ -220,7 +229,7 @@ def main():
                 if "ResBlock" in str(type(block[0])):
                     #if opt.save_all_features or block_idx == 4:
                     if block_idx == 3 or block_idx == 6 or block_idx == 9:
-                        save_feature_map(block[0].in_layers_features, f"{feature_type}_{block_idx}_in_layers_features_time_{i}")
+                        #save_feature_map(block[0].in_layers_features, f"{feature_type}_{block_idx}_in_layers_features_time_{i}")
                         save_feature_map(block[0].out_layers_features, f"{feature_type}_{block_idx}_out_layers_features_time_{i}")
                 #if len(block) > 1 and "SpatialTransformer" in str(type(block[1])):
                 #    save_feature_map(block[1].transformer_blocks[0].attn1.k, f"{feature_type}_{block_idx}_self_attn_k_time_{i}")
