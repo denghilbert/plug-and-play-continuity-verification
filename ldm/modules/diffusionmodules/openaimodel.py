@@ -88,10 +88,11 @@ class TimestepEmbedSequential(nn.Sequential, TimestepBlock):
                 cross_attn_v_output=None,
                 cross_attn_k_output=None,
                 out_layers_injected=None,
+                in_layers_injected=None,
                 module_name=''):
         for layer in self:
             if isinstance(layer, ResBlock):
-                x = layer(x, emb, out_layers_injected=out_layers_injected)
+                x = layer(x, emb, out_layers_injected=out_layers_injected, in_layers_injected=in_layers_injected)
             elif isinstance(layer, TimestepBlock):
                 x = layer(x, emb)
             elif isinstance(layer, SpatialTransformer):
@@ -265,7 +266,7 @@ class ResBlock(TimestepBlock):
         self.in_layers_features = None
         self.out_layers_features = None
 
-    def forward(self, x, emb, out_layers_injected=None):
+    def forward(self, x, emb, out_layers_injected=None, in_layers_injected=None):
         """
         Apply the block to a Tensor, conditioned on a timestep embedding.
         :param x: an [N x C x ...] Tensor of features.
@@ -273,11 +274,11 @@ class ResBlock(TimestepBlock):
         :return: an [N x C x ...] Tensor of outputs.
         """
         return checkpoint(
-            self._forward, (x, emb, out_layers_injected), self.parameters(), self.use_checkpoint
+            self._forward, (x, emb, out_layers_injected, in_layers_injected), self.parameters(), self.use_checkpoint
         )
 
 
-    def _forward(self, x, emb, out_layers_injected=None):
+    def _forward(self, x, emb, out_layers_injected=None, in_layers_injected=None):
         if self.updown:
             in_rest, in_conv = self.in_layers[:-1], self.in_layers[-1]
             h = in_rest(x)
@@ -285,8 +286,13 @@ class ResBlock(TimestepBlock):
             x = self.x_upd(x)
             h = in_conv(h)
         else:
-            h = self.in_layers(x)
-            self.in_layers_features = h
+            if in_layers_injected is not None:
+                in_layers_injected_uncond, in_layers_injected_cond = in_layers_injected.chunk(2)
+                b = x.shape[0] // 2
+                h = th.cat([in_layers_injected_uncond]*b + [in_layers_injected_cond]*b)
+            else:
+                h = self.in_layers(x)
+                self.in_layers_features = h
         emb_out = self.emb_layers(emb).type(h.dtype)
         while len(emb_out.shape) < len(h.shape):
             emb_out = emb_out[..., None]
@@ -300,6 +306,8 @@ class ResBlock(TimestepBlock):
                 out_layers_injected_uncond, out_layers_injected_cond = out_layers_injected.chunk(2)
                 b = x.shape[0] // 2
                 h = th.cat([out_layers_injected_uncond]*b + [out_layers_injected_cond]*b)
+                #h = h + emb_out
+                #h = self.out_layers(h)
             else:
                 h = h + emb_out
                 h = self.out_layers(h)
@@ -802,9 +810,11 @@ class UNetModel(nn.Module):
             self_attn_q_injected = None
             self_attn_k_injected = None
             out_layers_injected = None
+            in_layers_injected = None
             q_feature_key = f'output_block_{module_i}_self_attn_q'
             k_feature_key = f'output_block_{module_i}_self_attn_k'
             out_layers_feature_key = f'output_block_{module_i}_out_layers'
+            in_layers_feature_key = f'output_block_{module_i}_in_layers'
 
             cross_attn_k_output = None
             cross_attn_v_output = None
@@ -821,6 +831,8 @@ class UNetModel(nn.Module):
             # Resblock feature output
             if injected_features is not None and out_layers_feature_key in injected_features:
                 out_layers_injected = injected_features[out_layers_feature_key]
+            if injected_features is not None and in_layers_feature_key in injected_features:
+                in_layers_injected = injected_features[in_layers_feature_key]
 
             # k and v from cross-attn of output (decoder)
             if injected_features is not None and cross_k_output_key in injected_features:
@@ -840,6 +852,7 @@ class UNetModel(nn.Module):
                        cross_attn_v_output=cross_attn_v_output,
                        cross_attn_k_output=cross_attn_k_output,
                        out_layers_injected=out_layers_injected,
+                       in_layers_injected=in_layers_injected,
                        module_name='output_block' + str(module_i))
             module_i += 1
 

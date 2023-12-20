@@ -141,14 +141,17 @@ def main():
                 save_sampled_img(pred_x0, i, predicted_samples_paths)
 
             def load_target_features(qk_threshold):
-                self_attn_output_block_indices = [3,4,5,6,7,8,9,10]
+                self_attn_output_block_indices = [4,5,6,7,8,9,10,11]
                 cross_attn_input_block_indices = [1,2,4,5,7,8] # 3,6,9 is independent downsampling layers, 1/2, 4/5, 7/8 are paired
                 cross_attn_output_block_indices = [3,4,5,6,7,8,9,10,11] # 3/4/5, 6/7/8, 9/10/11 are paired, upsampling layers are inserted into 2,5,8
-                out_layers_output_block_indices = [3,6,9]
+                out_layers_output_block_indices = [3, 6, 9]
+                #out_layers_output_block_indices = [4]
                 output_block_self_attn_map_injection_thresholds = [-1] * len(self_attn_output_block_indices)
+                #output_block_self_attn_map_injection_thresholds = [ddim_steps // 2] * len(self_attn_output_block_indices)
                 cross_attn_input_injection_thresholds = [-1] * len(cross_attn_input_block_indices)
                 cross_attn_output_injection_thresholds = [-1] * len(cross_attn_output_block_indices)
                 feature_injection_thresholds = [qk_threshold] * len(out_layers_output_block_indices)
+                #feature_injection_thresholds = [exp_config.feature_injection_threshold] * len(out_layers_output_block_indices)
                 target_features = []
 
                 source_experiment_out_layers_path = os.path.join(exp_path_root, exp_config.source_experiment_name, "feature_maps")
@@ -199,6 +202,8 @@ def main():
                         if i <= int(feature_injection_threshold):
                             output = torch.load(os.path.join(source_experiment_out_layers_path, f"output_block_{output_block_idx}_out_layers_features_time_{t}.pt"))
                             current_features[f'output_block_{output_block_idx}_out_layers'] = output
+                            #output = torch.load(os.path.join(source_experiment_out_layers_path, f"output_block_{output_block_idx}_in_layers_features_time_{t}.pt"))
+                            #current_features[f'output_block_{output_block_idx}_in_layers'] = output
 
                     target_features.append(current_features)
 
