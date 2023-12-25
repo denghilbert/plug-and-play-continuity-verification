@@ -158,7 +158,8 @@ def main():
         exp_config.config.prompt = opt.prompt
     exp_path_root = setup_config.config.exp_path_root
     if opt.exp_path_root !='default_test':
-        exp_path_root = exp_path_root + opt.exp_path_root
+        #exp_path_root = exp_path_root + opt.exp_path_root
+        exp_path_root = opt.exp_path_root
 
     if opt.real_img_path != 'null':
         exp_config.config.init_img = opt.real_img_path

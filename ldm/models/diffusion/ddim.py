@@ -92,6 +92,9 @@ class DDIMSampler(object):
                unconditional_guidance_scale=1.,
                unconditional_conditioning=None,
                injected_features=None,
+               timestep_cond=None,
+               timestep_start=0,
+               x_inter=None,
                injected_features_3layer=None,
                strength=1.,
                callback_ddim_timesteps=None,
@@ -132,6 +135,9 @@ class DDIMSampler(object):
                                                     unconditional_guidance_scale=unconditional_guidance_scale,
                                                     unconditional_conditioning=unconditional_conditioning,
                                                     injected_features=injected_features,
+                                                    timestep_cond=timestep_cond,
+                                                    timestep_start=timestep_start,
+                                                    x_inter=x_inter,
                                                     injected_features_3layer=injected_features_3layer,
                                                     callback_ddim_timesteps=callback_ddim_timesteps,
                                                     negative_prompt_alpha=negative_prompt_alpha,
@@ -146,7 +152,7 @@ class DDIMSampler(object):
                       mask=None, x0=None, img_callback=None, log_every_t=100,
                       temperature=1., noise_dropout=0., score_corrector=None, corrector_kwargs=None,
                       unconditional_guidance_scale=1., unconditional_conditioning=None,
-                      injected_features=None,injected_features_3layer=None, callback_ddim_timesteps=None,
+                      injected_features=None, timestep_cond=None, timestep_start=0, x_inter=None, injected_features_3layer=None, callback_ddim_timesteps=None,
                       negative_prompt_alpha=1.0, negative_prompt_schedule='constant'):
         device = self.model.betas.device
         b = shape[0]
@@ -161,7 +167,7 @@ class DDIMSampler(object):
             subset_end = int(min(timesteps / self.ddim_timesteps.shape[0], 1) * self.ddim_timesteps.shape[0]) - 1
             timesteps = self.ddim_timesteps[:subset_end]
 
-        intermediates = {'x_inter': [img], 'pred_x0': [img]}
+        intermediates = {'x_inter': [img], 'pred_x0': [img], 'last_cond_x_inter': None}
         time_range = reversed(range(0,timesteps)) if ddim_use_original_steps else np.flip(timesteps)
         total_steps = timesteps if ddim_use_original_steps else timesteps.shape[0]
         print(f"Running DDIM Sampling with {total_steps} timesteps")
@@ -174,6 +180,10 @@ class DDIMSampler(object):
         negative_prompt_alpha_schedule = self.make_negative_prompt_schedule(negative_prompt_schedule, negative_prompt_alpha, total_steps)
 
         for i, step in enumerate(iterator):
+            if i < timestep_start: continue
+            if i == timestep_start and x_inter != None:
+                img = x_inter
+            #    print(img[0,0,0,:10])
             #if step < 500:
             #    cond = unconditional_conditioning
             index = total_steps - i - 1
@@ -203,10 +213,17 @@ class DDIMSampler(object):
                                       )
 
             img, pred_x0 = outs
+
+            #if i == 9:
+            #    torch.save(img, './i9_img.pt')
+            #    print(img[0,0,0,:10])
+            #    import pdb;pdb.set_trace()
             if step in callback_ddim_timesteps_list:
                 if callback: callback(i)
                 if img_callback: img_callback(pred_x0, img, step)
 
+            if i == timestep_cond:
+                intermediates['last_cond_x_inter'] = img
             if index % log_every_t == 0 or index == total_steps - 1:
                 intermediates['x_inter'].append(img)
                 intermediates['pred_x0'].append(pred_x0)
