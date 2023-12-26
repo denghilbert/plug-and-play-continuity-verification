@@ -109,10 +109,6 @@ def main():
     translation_folders = [p.replace(' ', '_') for p in exp_config.prompts]
     uncond_list = []
     timesteps_list = []
-    #for i in range(10):
-    #    uncond_list.append(i / 10)
-    #for i in range(15, 150, 5):
-    #    uncond_list.append(i / 10)
     for i in range(opt.classifier_free_scale[0], opt.classifier_free_scale[1], 5):
         if i != 10:
             uncond_list.append(i / 10)
